@@ -7,19 +7,75 @@ Description: |
   is downloaded from my Public Github repository, then deployed on Apache Web Server.
 
 Parameters:
-  
+  latestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+
+  myKeyPair:
+    Description: Choose your own  keypair. 
+    Type: AWS::EC2::KeyPair::KeyName
+
+  myInstanceType:
+    Description: I like t2 micro but you can choose any one 
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+         - t2.micro
+         - t3.micro
+         - t2.nano
 Resources: 
-  
+
   myWebServer:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref latestAmiId
+      InstanceType: !Ref myInstanceType 
+      KeyName: !Ref myKeyPair 
+      SecurityGroupIds: 
+        - !Ref mySecGrp #!GetAtt mySecGrp.Group.Id
+      Tags: 
+        - Key: "Name"
+          Value: !Sub Web Server of ${AWS::StackName} Stack
+      UserData: !Base64 |
+        #! /bin/bash
+        dnf update -y
+        dnf install httpd -y
+        systemctl start httpd
+        systemctl enable httpd
+        cd /var/www/html
+        FOLDER="https://raw.githubusercontent.com/hasantoygun23/aws-kitten-101-ec2/refs/heads/main/static-web"
+        wget ${FOLDER}/index.html
+        wget ${FOLDER}/cat0.jpg
+        wget ${FOLDER}/cat1.jpg
+        wget ${FOLDER}/cat2.jpg
+  
     
 
+ 
   mySecGrp:
-    
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "allow ssh and http" # Required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags: 
+        - Key: "Name"
+          Value: "hasan"
+        - Key: "cohort"
+          Value: "hsn" 
+
 
 Outputs:
   webSiteURL:
-    Description: URL of website
+    Description: IP of website
     Value: !Sub
-      - 
-      - 
+      - http://${publicIP}
+      - publicIP: !GetAtt myWebServer.PublicIp
    
